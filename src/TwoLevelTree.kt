@@ -13,8 +13,9 @@ class TwoLevelTree(points: Array<Int>) {
     private val CHILD_REVERSE_CUTOFF: Int
 
     init {
-        val segmentSize = Math.sqrt(points.size.toDouble()).toInt()
-        this.CHILD_REVERSE_CUTOFF = 3 * segmentSize / 4
+        //val segmentSize = Math.min(Math.sqrt(points.size.toDouble()).toInt(), 200)
+        val segmentSize = 4
+        this.CHILD_REVERSE_CUTOFF = 3
         val mutableNodes: Array<ChildNode?> = Array(points.size, {null})
         
         val firstNode = ChildNode(points[0], 0)
@@ -56,6 +57,7 @@ class TwoLevelTree(points: Array<Int>) {
     fun prev(p: Int): Int = nodeList[p].prev.city
     fun between(a: Int, b: Int, c: Int) = _between(nodeList[a], nodeList[b], nodeList[c])
     fun flip(a: Int, b: Int, c: Int, d: Int) = _flip(nodeList[a], nodeList[b], nodeList[c], nodeList[d])
+
     
 
     private fun _between(a: ChildNode, b: ChildNode, c: ChildNode): Int {
@@ -103,7 +105,7 @@ class TwoLevelTree(points: Array<Int>) {
     }
 
     private fun reverseParents(b: ParentNode, d: ParentNode){
-        val a = b.prev 
+        val a = b.prev
         val c = d.next
         var t = b
         while (t.prev != d) {
@@ -112,12 +114,12 @@ class TwoLevelTree(points: Array<Int>) {
         }
         reconnect(a, b, c, d)
     }
-    
+
     private fun reconnectChildren(a: ChildNode, b: ChildNode, c: ChildNode, d: ChildNode){
         a.next = d; d.prev = a
         b.next = c; c.prev = b
     }
-    
+
     private fun reconnect(a: ParentNode, b: ParentNode, c: ParentNode, d: ParentNode){
         a.next = d; a.rightChild.next = d.leftChild
         d.prev = a; d.leftChild.prev = a.rightChild
@@ -163,11 +165,10 @@ class TwoLevelTree(points: Array<Int>) {
         p0.size += childOrder(a) + 1
         p0.rightChild = a
         p1.leftChild = a.next
-        do {
+        while (n.prev != a) {
             joinWithPrevParent(n)
             n = n.next
         }
-            while(n != a.next)
     }
 
     private fun mergeNextFrom(a: ChildNode){
@@ -177,11 +178,10 @@ class TwoLevelTree(points: Array<Int>) {
         p1.size = childOrder(a)
         p0.leftChild = a
         p1.rightChild = a.prev
-        do {
+        while (n.next != a) {
             joinWithNextParent(n)
             n = n.prev
         }
-        while(n != a.prev)
     }
 
     private fun joinWithNextParent(n: ChildNode){
@@ -266,8 +266,8 @@ class TwoLevelTree(points: Array<Int>) {
 
 }
 fun main(args: Array<String>){
-    N = 100
-    val reader: BufferedReader = BufferedReader(InputStreamReader(FileInputStream("src/instances/tsp100.txt")))
+    N = 20
+    val reader: BufferedReader = BufferedReader(InputStreamReader(FileInputStream("src/instances/tsp20.txt")))
     var lines = false
     var i = 0
     val tempList: MutableList<Point> = mutableListOf()
@@ -286,13 +286,14 @@ fun main(args: Array<String>){
     }
     pointList = tempList.toList()
     val tree = TwoLevelTree(constructGreedyTour().first)
-    for (j in 0..100) {
-        val a = StdRandom.uniform(0, 99)
+    for (j in 0..1000) {
+
+        val a = StdRandom.uniform(0, N - 1)
         val b = tree.next(a)
         var d: Int
         var c: Int
         do {
-            d = StdRandom.uniform(0, 99)
+            d = StdRandom.uniform(0, N - 1)
             c = tree.next(d)
         } while (d == a || d == b || c == a)
         if (tree.between(a, b, c) == 1) {
@@ -306,14 +307,14 @@ fun main(args: Array<String>){
         }
         tree.flip(a, b, c, d)
     }
-    val start = StdRandom.uniform(0, 99)
+    val start = StdRandom.uniform(0, N - 1)
     var n = start
     var total = 0
-    for (k in 0 until 100) {
+    for (k in 0 until N) {
         total += n
         n = tree.next(n)
     }
     if (n != start) println("Failure: traversal did not cycle properly")
-    if (total != 4950) println("Failure: traversal did not visit every node")
+    if (total != (N*(N-1))/2) println("Failure: traversal did not visit every node")
 
 }
