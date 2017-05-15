@@ -14,7 +14,7 @@ import java.io.InputStream
 fun main(args: Array<String>) {
 
    // SimpleGUI()
-    val heuristics = listOf("nn", "ni", "greedy", "sa")
+    val heuristics = listOf("nn", "ni", "greedy", "sa", "lk")
     try {
         if (args[1] in heuristics) toPoints(FileInputStream(File("src/instances/" + args[0])), args[0], args[1])
         else println("Must enter a valid heuristic")

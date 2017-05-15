@@ -14,8 +14,8 @@ class TwoLevelTree(points: Array<Int>) {
 
     init {
         //val segmentSize = Math.min(Math.sqrt(points.size.toDouble()).toInt(), 200)
-        val segmentSize = 4
-        this.CHILD_REVERSE_CUTOFF = 3
+        val segmentSize = Math.min(Math.sqrt(points.size.toDouble()).toInt(), 200)
+        this.CHILD_REVERSE_CUTOFF = 3*segmentSize/4
         val mutableNodes: Array<ChildNode?> = Array(points.size, {null})
         
         val firstNode = ChildNode(points[0], 0)
@@ -56,11 +56,19 @@ class TwoLevelTree(points: Array<Int>) {
     fun next(p: Int): Int = nodeList[p].next.city
     fun prev(p: Int): Int = nodeList[p].prev.city
     fun between(a: Int, b: Int, c: Int) = _between(nodeList[a], nodeList[b], nodeList[c])
-    fun flip(a: Int, b: Int, c: Int, d: Int) = _flip(nodeList[a], nodeList[b], nodeList[c], nodeList[d])
+    fun flip(a: Int, b: Int, c: Int, d: Int) {
+        if (nodeList[a].next == nodeList[b])
+            _flip(nodeList[a], nodeList[b], nodeList[c], nodeList[d])
+        else
+            _flip(nodeList[c], nodeList[d], nodeList[a], nodeList[b])
+    }
 
     
 
     private fun _between(a: ChildNode, b: ChildNode, c: ChildNode): Int {
+        if (b == a) return 1
+        if (c == a) return -1
+        if (b == c) return 0
         val i2 = relativeParentOrder(a, b)*N + childOrder(b)
         val i3 = relativeParentOrder(a, c)*N + childOrder(c)
         if (i2 < i3) return -1
@@ -68,19 +76,15 @@ class TwoLevelTree(points: Array<Int>) {
     }
 
     private fun _flip(a: ChildNode, b: ChildNode, c: ChildNode, d: ChildNode) {
-        when {
-            a.parent == c.parent && b.parent == d.parent -> {
-                if (childOrder(d) > childOrder(b)) reverseChildren(b, d)
-                else reverseChildren(c, a)
-            }
-            a.parent == c.parent -> reverseChildren(c, a)
-            b.parent == d.parent -> reverseChildren(b, d)
-            else -> splitMergeAndReverse(a, b, c, d)
-        }
+        if (b == d || a == c) return
+        if (b.parent == d.parent && childOrder(d) > childOrder(b)) reverseChildren(b, d)
+        else if (a.parent == c.parent && childOrder(a) > childOrder(c)) reverseChildren(c, a)
+        else splitMergeAndReverse(a, b, c, d)
     }
 
     private fun reverseChildren(b: ChildNode, d: ChildNode){
-        if (childOrder(d) - childOrder(b) < CHILD_REVERSE_CUTOFF) {
+        if (b == b.parent.leftChild && d == b.parent.rightChild) reverseParents(b.parent, b.parent)
+        else if (childOrder(d) - childOrder(b) < CHILD_REVERSE_CUTOFF) {
             val a = b.prev
             val c = d.next
             var t1: ChildNode; val t2: ChildNode
@@ -105,19 +109,28 @@ class TwoLevelTree(points: Array<Int>) {
     }
 
     private fun reverseParents(b: ParentNode, d: ParentNode){
-        val a = b.prev
-        val c = d.next
-        var t = b
-        while (t.prev != d) {
-            t = t.next
-            t.prev.reverse()
+        if (b == d) {
+            b.reverse = !b.reverse
+            b.prev.rightChild.next = b.leftChild
+            b.next.leftChild.prev = b.rightChild
+            b.rightChild.next = b.next.leftChild
+            b.leftChild.prev = b.prev.rightChild
         }
-        reconnect(a, b, c, d)
+        else {
+            val a = b.prev
+            val c = d.next
+            var t = b
+            while (t.prev != d) {
+                t = t.next
+                t.prev.reverse()
+            }
+            reconnect(a, b, c, d)
+        }
     }
 
-    private fun reconnectChildren(a: ChildNode, b: ChildNode, c: ChildNode, d: ChildNode){
-        a.next = d; d.prev = a
-        b.next = c; c.prev = b
+    private fun <T> reconnectChildren(a: Node<T>, b: Node<T>, c: Node<T>, d: Node<T>){
+        a.next = d as T; d.prev = a as T
+        b.next = c as T; c.prev = b as T
     }
 
     private fun reconnect(a: ParentNode, b: ParentNode, c: ParentNode, d: ParentNode){
@@ -215,19 +228,25 @@ class TwoLevelTree(points: Array<Int>) {
      * @property city Encapsulated city.
      */
 
+    private interface Node<T> {
+        var index: Int
+        var next: T
+        var prev: T
+        fun reverse()
+    }
 
-    private class ChildNode(val city: Int, var index: Int) {
+    private class ChildNode(val city: Int, override var index: Int) : Node<ChildNode> {
         lateinit var _next: ChildNode
         lateinit var _prev: ChildNode
-        var next: ChildNode
+        override var next: ChildNode
             get() = if (!parent.reverse) _next else _prev
             set(value) = if (!parent.reverse) _next = value else _prev = value
-        var prev: ChildNode
+        override var prev: ChildNode
             get() = if (!parent.reverse) _prev else _next
             set(value) = if (!parent.reverse) _prev = value else _next = value
         lateinit var parent: ParentNode
 
-        fun reverse() {
+        override fun reverse() {
             val temp = _next
             _next = _prev
             _prev = temp
@@ -242,9 +261,11 @@ class TwoLevelTree(points: Array<Int>) {
      * @property reverse The point of the whole thing. Flipping this reverses the child segment with constant complexity.
      */
 
-    private class ParentNode(var size: Int, var index: Int, var reverse: Boolean = false ) {
-        lateinit var next: ParentNode
-        lateinit var prev: ParentNode
+    private class ParentNode(var size: Int, override var index: Int, var reverse: Boolean = false ) : Node<ParentNode> {
+
+        override lateinit var next: ParentNode
+        override lateinit var prev: ParentNode
+
         lateinit var _leftChild: ChildNode
         lateinit var _rightChild: ChildNode
 
@@ -255,7 +276,7 @@ class TwoLevelTree(points: Array<Int>) {
             get() = if (!reverse) _rightChild else _leftChild
             set(value) = if (!reverse) _rightChild = value else _leftChild = value
 
-        fun reverse() {
+        override fun reverse() {
             reverse = !reverse
             val temp = next
             next = prev
@@ -266,8 +287,8 @@ class TwoLevelTree(points: Array<Int>) {
 
 }
 fun main(args: Array<String>){
-    N = 20
-    val reader: BufferedReader = BufferedReader(InputStreamReader(FileInputStream("src/instances/tsp20.txt")))
+    N = 100
+    val reader: BufferedReader = BufferedReader(InputStreamReader(FileInputStream("src/instances/tsp100.txt")))
     var lines = false
     var i = 0
     val tempList: MutableList<Point> = mutableListOf()

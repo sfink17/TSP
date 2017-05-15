@@ -11,8 +11,8 @@ import java.math.MathContext
  * [Tour.draw], but there are some slight differences in the data structures,
  * and it is very low on my priority list.
  */
-fun PrintTour(tour: Array<Int>) {
-
+fun PrintTour(tour: Array<Int>, clear: Boolean = true) {
+    if (clear) StdDraw.clear()
     val tourTime = getDeltaT(t1)
     t1 = System.currentTimeMillis() - t1
 
